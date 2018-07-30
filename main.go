@@ -27,18 +27,30 @@ func init() {
 }
 
 func getIPAddrs() (ipAddrs []string) {
-	addrs, err := net.InterfaceAddrs()
+	ift, err := net.Interfaces()
 	if err != nil {
 		panic(err)
 	}
-	for _, addr := range addrs {
-		if ipnet, ok := addr.(*net.IPNet); !ok {
+	for _, ifi := range ift {
+		if ifi.Flags&net.FlagUp == 0 {
 			continue
-		} else if ipnet.IP.To4() == nil {
+		} else if ifi.Flags&net.FlagPointToPoint != 0 {
 			continue
-		} else {
-			ip := ipnet.IP.To4()
-			ipAddrs = append(ipAddrs, ip.String())
+		}
+
+		addrs, err := ifi.Addrs()
+		if err != nil {
+			println(err.Error())
+			continue
+		}
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); !ok {
+				continue
+			} else if ipv4 := ipnet.IP.To4(); ipv4 == nil {
+				continue
+			} else {
+				ipAddrs = append(ipAddrs, ipv4.String())
+			}
 		}
 	}
 	sort.Strings(ipAddrs)
