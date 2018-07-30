@@ -2,7 +2,6 @@ OWNER = lnmpy
 REPO = http-server
 
 install:
-	go get github.com/golang/dep
 	dep ensure
 
 build:
