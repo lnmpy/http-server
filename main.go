@@ -76,20 +76,6 @@ func printStatus(addrs []string, ip string, port int, dir string) {
 	w.Println("Hit CTRL-C to stop the server")
 }
 
-func handler(w http.ResponseWriter, r *http.Request) {
-
-	var keys []string
-	for k := range r.Header {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	fmt.Fprintln(w, "<b>Request Headers:</b></br>", r.URL.Path[1:])
-	for _, k := range keys {
-		fmt.Fprintln(w, k, ":", r.Header[k], "</br>", r.URL.Path[1:])
-	}
-}
-
 func main() {
 	flag.Parse()
 	host, dir, addrs := fmt.Sprintf("%s:%d", *ip, *port), defaultDir, getIPAddrs()
@@ -102,7 +88,7 @@ func main() {
 	}
 	printStatus(addrs, *ip, *port, dir)
 
-	http.Handle("/", newFileHandler(http.FileServer(http.Dir(dir))))
+	http.Handle("/", newHandler(http.FileServer(http.Dir(dir)), newPersistJsonRequestHandler()))
 	if err := http.ListenAndServe(host, nil); err != nil {
 		color.HiRed(err.Error())
 	}
