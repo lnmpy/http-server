@@ -1,13 +1,15 @@
 OWNER = lnmpy
 REPO = http-server
+TAG = `git describe --tags`
+
 
 install:
 	dep ensure
 
-build:
+build: clean
 	go build -o http-server
 
-release:
+release: clean
 	GOOS=darwin GOARCH=amd64 go build -o http-server && tar -czf http-server_darwin.tar.gz http-server
 	GOOS=linux GOARCH=amd64 go build -o http-server && tar -czf http-server_linux.tar.gz http-server
 	GOOS=windows GOARCH=amd64 go build -o http-server.exe  && tar -czf http-server_windows.tar.gz http-server.exe

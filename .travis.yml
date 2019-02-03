@@ -12,7 +12,7 @@ script:
   - make build
 
 after_success:
-  - if [[ "$TRAVIS_TAG" != "" ]]; then TAG=${TRAVIS_TAG} make release; fi
+  - if [[ "$TRAVIS_TAG" != "" ]]; then make release; fi
 
 notifications:
   email: false

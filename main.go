@@ -3,11 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"os"
+	"path"
 	"sort"
+	"time"
 
 	"github.com/fatih/color"
+	"github.com/gin-gonic/gin"
 )
 
 const (
@@ -17,8 +22,9 @@ const (
 )
 
 var (
-	ip   *string
-	port *int
+	ip    *string
+	port  *int
+	pubIP string
 )
 
 func init() {
@@ -49,6 +55,9 @@ func getIPAddrs() (ipAddrs []string) {
 			} else if ipv4 := ipnet.IP.To4(); ipv4 == nil {
 				continue
 			} else {
+				if !ipv4.IsLoopback() {
+					pubIP = ipv4.String()
+				}
 				ipAddrs = append(ipAddrs, ipv4.String())
 			}
 		}
@@ -76,6 +85,54 @@ func printStatus(addrs []string, ip string, port int, dir string) {
 	w.Println("Hit CTRL-C to stop the server")
 }
 
+func saveReqFile(c *gin.Context) {
+	r := c.Request
+
+	filePath := r.URL.Path[1:]
+	dirPath := path.Dir(filePath)
+	ret := struct {
+		Msg string `json:"msg"`
+		Err error  `json:"error,omitempty"`
+		URI string `json:"uri,omitempty"`
+	}{}
+
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		err = os.MkdirAll(dirPath, 0755)
+		if err != nil {
+			ret.Msg = fmt.Sprintf("failed to create folder '%s'", dirPath)
+			c.Error(err)
+			c.AbortWithStatusJSON(http.StatusInternalServerError, ret)
+			return
+		}
+	}
+
+	filePath = fmt.Sprintf("%s.%d", filePath, time.Now().UnixNano()/1000)
+	if c.Request.Header.Get("Content-Type") == "application/json" {
+		filePath += ".json"
+	}
+	f, err := os.OpenFile(filePath, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
+	if err != nil {
+		ret.Msg = fmt.Sprintf("failed to create file '%s'", filePath)
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, ret)
+		return
+	}
+
+	_, err = io.Copy(f, r.Body)
+	if err != nil {
+		ret.Msg = fmt.Sprintf("failed to write file '%s'", filePath)
+		c.Error(err)
+		c.AbortWithStatusJSON(http.StatusInternalServerError, ret)
+		return
+	}
+	f.Close()
+
+	ret.Msg = "success"
+	ret.URI = fmt.Sprintf("http://%s:%d/%s", pubIP, *port, filePath)
+	c.JSON(http.StatusOK, ret)
+	return
+}
+
 func main() {
 	flag.Parse()
 	host, dir, addrs := fmt.Sprintf("%s:%d", *ip, *port), defaultDir, getIPAddrs()
@@ -88,8 +145,21 @@ func main() {
 	}
 	printStatus(addrs, *ip, *port, dir)
 
-	http.Handle("/", newHandler(http.FileServer(http.Dir(dir)), newPersistJsonRequestHandler()))
-	if err := http.ListenAndServe(host, nil); err != nil {
-		color.HiRed(err.Error())
-	}
+	gin.SetMode(gin.ReleaseMode)
+	r := gin.New()
+	r.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		r := color.New(color.FgHiRed, color.Bold)
+		w := color.New(color.FgHiWhite)
+		t := time.Now().Format("02/Jan/2006 03:04:05")
+		return w.Sprintf("[%s] - - [%s] %s \"%s\"\n",
+			param.ClientIP, t, param.Request.UserAgent(),
+			r.Sprintf("%s %s %s", param.Method, param.Path, param.Request.Proto),
+		)
+
+	}))
+	r.Use(gin.Recovery())
+	r.Static("/", dir)
+	r.POST("/*path", saveReqFile)
+	r.PUT("/*path", saveReqFile)
+	r.Run(host)
 }
