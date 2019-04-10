@@ -158,7 +158,7 @@ func main() {
 
 	}))
 	r.Use(gin.Recovery())
-	r.Static("/", dir)
+	r.StaticFS("/", gin.Dir(dir, true))
 	r.POST("/*path", saveReqFile)
 	r.PUT("/*path", saveReqFile)
 	r.Run(host)
