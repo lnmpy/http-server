@@ -37,7 +37,7 @@ MIT
 
 ## Author
 
-Elvis Macak (elvis@lnmpy.com)
+Elvis Macak (elvismacak@gmail.com)
 
 ## Thanks
 
