@@ -8,15 +8,15 @@ on:
 jobs:
 
   build:
-    runs-on: ubuntu-16.04
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v1
     - uses: actions/setup-go@v1
       with:
         go-version: 1.12
-    - run: go get -v github.com/aktau/github-release
+    - run: go get -v github.com/github-release/github-release
     - run: PATH=$(go env GOPATH)/bin:${PATH} make release
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_ACTION_TOKEN }} 
+        GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }} 
       
 
