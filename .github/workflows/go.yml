@@ -17,6 +17,6 @@ jobs:
     - run: go get -v github.com/aktau/github-release
     - run: PATH=$(go env GOPATH)/bin:${PATH} make release
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_ACTION_TOKEN }} 
+        GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }} 
       
 
